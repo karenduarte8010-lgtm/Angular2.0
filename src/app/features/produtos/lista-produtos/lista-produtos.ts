@@ -1,14 +1,23 @@
-import { Component, signal, computed, effect } from '@angular/core';
+import { Component, signal, computed, effect, inject } from '@angular/core';
 import { Produto } from '../produto/produto';
+import { ProdutosService } from '../produtos.service';
+import { NgComponentOutlet } from "../../../../../node_modules/@angular/common/types/_common_module-chunk";
+import {MatButtonModule} from '@angular/material/button';
 
 @Component({
   selector: 'app-lista-produtos',
-  imports: [Produto],
+  imports: [Produto, MatButtonModule],
   templateUrl: './lista-produtos.html',
   styleUrl: './lista-produtos.css',
 })
 export class ListaProdutos {
+  private produtosService = inject(ProdutosService);
+  error = signal<String | null>(null);
+
   constructor() {
+    // carregada API
+    this.carregarProdutos();
+
     effect(() => {
       console.log('Lista de produtos alterada:', this.produtos());
     });
@@ -22,12 +31,31 @@ export class ListaProdutos {
     });
   }
 
+  carregarProdutos() {
+    this.error.set(null);
+    this.carregando.set(true);
+    this.carregando.set(true);
+    this.produtosService.buscarProdutos().subscribe({
+      next: (dados) => {
+        const produtos = this.produtosService.transformarProdutos
+        (dados);
+        this.produtos.set(produtos);
+        this.carregando.set(false);
+      },
+      error: (erro) => {
+        console.error('Erro ao carregar produtos:', erro);
+        this.error.set 
+        ('erro ap carregarprodtudos. verifique sua conexão e tente novamente.')
+        this.carregando.set(false);
+      },
+    });
+  }
+
   produtoSelecionado = signal<string | null>(null);
 
-  produtos = signal([
-    { nome: 'Notebook', preco: 3800 },
-    { nome: 'Mouse', preco: 179 },
-  ]);
+  produtos = signal<{ nome: string; preco: number }[]>([]);
+
+  carregando = signal(true);
 
   totalProdutos = computed(() => this.produtos().length);
 

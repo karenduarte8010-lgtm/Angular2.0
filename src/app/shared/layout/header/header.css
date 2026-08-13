@@ -1,0 +1,9 @@
+mat-toolbar {
+    position: stick;
+    top: 0;
+    z-inndex:100;
+}
+
+.flex-spacer {
+flex: 1 1 auto;
+}
