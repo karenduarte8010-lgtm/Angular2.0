@@ -1,16 +1,21 @@
+import { inject } from '@angular/core';
 import { HttpInterceptorFn } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { tap, catchError, throwError } from 'rxjs';
-
+import { AuthService } from '../services/auth.service';
 export const httpInterceptor: HttpInterceptorFn = (req, next) => {
-  // TOKEN
-  const token = 'fake-jwt-token';
-  const novaReq = req.clone({
-    setHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  // SEGUE COM A NOVA REQUEST + LOG RESPONSE
+  const authService = inject(AuthService);
+  // Router usa do redirecionamento sem erros de autenticação/autorização.
+  const router = inject(Router);
+  const token = authService.obterToken();
+  console.log('REQUEST', req.url);
+  const novaReq = token
+    ? req.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    : req;
   return next(novaReq).pipe(
     tap({
       next: (event) => console.log('RESPONSE:', event),
@@ -18,11 +23,20 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
     }),
     catchError((error) => {
       console.error('ERRO GLOBAL:', error);
+      // 401 -> ausência de autenticação ou token inválido.
       if (error.status === 401) {
-        console.warn('Não autorizado!');
+        console.warn('Nãoautorizado. Façalogin novamente.');
+        authService.logout();
+        router.navigateByUrl('/login');
       }
+      // 403 -> usuario autenticado, mas sem permissão.
+      if (error.status === 403) {
+        console.warn('Acessoproibido. Perfilsempermissão.');
+        router.navigateByUrl('/produtos');
+      }
+      // 500 -> erro internodo servidor
       if (error.status === 500) {
-        console.warn('Erro interno do servidor!');
+        console.warn('Erro internodo servidor!');
       }
       return throwError(() => error);
     }),
